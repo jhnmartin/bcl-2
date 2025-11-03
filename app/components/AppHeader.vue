@@ -33,7 +33,7 @@ const items = computed<NavigationMenuItem[]>(() => [
 </script>
 
 <template>
-  <UHeader mode="drawer">
+  <UHeader>
     <template #title>
       <p>Bar Crawl Live!</p>
     </template>
