@@ -1,2 +1,56 @@
 @import 'tailwindcss';
 @import '@nuxt/ui';
+
+@theme {
+  --font-sans: 'Open Sans', sans-serif;
+}
+
+/* TipTap display styles - reusable for rendering rich text content */
+.tiptap-display {
+  @apply text-base leading-6;
+}
+
+.tiptap-display h2 {
+  @apply text-2xl font-semibold leading-tight mt-6 mb-3;
+}
+
+.tiptap-display h3 {
+  @apply text-xl font-semibold leading-tight mt-5 mb-2;
+}
+
+.tiptap-display h4 {
+  @apply text-lg font-semibold leading-tight mt-4 mb-2;
+}
+
+.tiptap-display p {
+  @apply my-3;
+}
+
+.tiptap-display ul,
+.tiptap-display ol {
+  @apply pl-6 my-3;
+}
+
+.tiptap-display ul {
+  @apply list-disc;
+}
+
+.tiptap-display ol {
+  @apply list-decimal;
+}
+
+.tiptap-display li {
+  @apply my-1 pl-1;
+}
+
+.tiptap-display li p {
+  @apply my-0;
+}
+
+.tiptap-display strong {
+  @apply font-semibold;
+}
+
+.tiptap-display em {
+  @apply italic;
+}

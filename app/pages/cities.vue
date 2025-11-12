@@ -1,7 +1,11 @@
-<script lang="ts" setup></script>
+<script lang="ts" setup>
+definePageMeta({
+  colorMode: 'dark',
+});
+</script>
 
 <template>
-  <div>cities</div>
+  <div>
+    <NuxtPage />
+  </div>
 </template>
-
-<style></style>

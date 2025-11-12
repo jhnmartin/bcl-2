@@ -445,6 +445,7 @@ export type Database = {
           early_checkin_venue_2: string | null;
           eventbrite_id: string | null;
           id: string;
+          name: string | null;
           slug: string | null;
           theme: string | null;
           time_slot: string | null;
@@ -471,6 +472,7 @@ export type Database = {
           early_checkin_venue_2?: string | null;
           eventbrite_id?: string | null;
           id?: string;
+          name?: string | null;
           slug?: string | null;
           theme?: string | null;
           time_slot?: string | null;
@@ -497,6 +499,7 @@ export type Database = {
           early_checkin_venue_2?: string | null;
           eventbrite_id?: string | null;
           id?: string;
+          name?: string | null;
           slug?: string | null;
           theme?: string | null;
           time_slot?: string | null;
@@ -761,6 +764,7 @@ export type Database = {
           square_3_image_url: string | null;
           vertical_image_alt_text: string | null;
           vertical_image_url: string | null;
+          video: string | null;
         };
         Insert: {
           benefits_heading?: string | null;
@@ -790,6 +794,7 @@ export type Database = {
           square_3_image_url?: string | null;
           vertical_image_alt_text?: string | null;
           vertical_image_url?: string | null;
+          video?: string | null;
         };
         Update: {
           benefits_heading?: string | null;
@@ -819,6 +824,7 @@ export type Database = {
           square_3_image_url?: string | null;
           vertical_image_alt_text?: string | null;
           vertical_image_url?: string | null;
+          video?: string | null;
         };
         Relationships: [];
       };

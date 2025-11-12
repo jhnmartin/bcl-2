@@ -1,6 +1,6 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
-  modules: ['@nuxtjs/supabase', '@nuxt/ui'],
+  modules: ['@nuxtjs/supabase', '@nuxt/ui', 'nuxt-tiptap-editor'],
   css: ['~/assets/css/main.css'],
 
   devtools: { enabled: true },
@@ -11,8 +11,11 @@ export default defineNuxtConfig({
       login: '/login',
       callback: '/confirm',
       include: ['/dashboard(/*)?'],
-      exclude: [],
       saveRedirectToCookie: false,
     },
+  },
+
+  tiptap: {
+    prefix: 'Tiptap',
   },
 });
