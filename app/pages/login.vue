@@ -12,6 +12,8 @@ useSeoMeta({
   description: 'Login to your account to continue',
 });
 
+const supabase = useSupabaseClient();
+const router = useRouter();
 const toast = useToast();
 
 const fields = [
@@ -42,8 +44,31 @@ const schema = z.object({
 
 type Schema = z.output<typeof schema>;
 
-function onSubmit(payload: FormSubmitEvent<Schema>) {
-  console.log('Submitted', payload);
+async function onSubmit(payload: FormSubmitEvent<Schema>) {
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email: payload.data.email,
+    password: payload.data.password,
+  });
+
+  if (error) {
+    toast.add({
+      title: 'Login failed',
+      description: error.message,
+      color: 'error',
+      icon: 'i-lucide-triangle-alert',
+    });
+    return;
+  }
+
+  if (data.user) {
+    toast.add({
+      title: 'Welcome back!',
+      description: 'You have been successfully logged in.',
+      color: 'success',
+      icon: 'i-lucide-check',
+    });
+    await router.push('/dashboard');
+  }
 }
 </script>
 
