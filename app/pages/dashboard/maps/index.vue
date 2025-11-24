@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { h, resolveComponent } from 'vue';
 import type { DropdownMenuItem, TableColumn } from '@nuxt/ui';
 import { useClipboard } from '@vueuse/core';
 
@@ -7,6 +8,8 @@ const supabase = useSupabaseClient();
 const router = useRouter();
 const toast = useToast();
 const { copy } = useClipboard();
+
+const UButton = resolveComponent('UButton');
 
 const { data: maps } = await useAsyncData('dashboard-maps', async () => {
   const { data, error } = await supabase
@@ -57,14 +60,50 @@ interface MapRow {
   avatar: string | null;
 }
 
+// Helper function to create sortable headers
+function getSortableHeader(column: any, label: string) {
+  const isSorted = column.getIsSorted();
+
+  return h(UButton, {
+    color: 'neutral',
+    variant: 'ghost',
+    label,
+    icon: isSorted
+      ? isSorted === 'asc'
+        ? 'i-lucide-arrow-up-narrow-wide'
+        : 'i-lucide-arrow-down-wide-narrow'
+      : 'i-lucide-arrow-up-down',
+    class: '-mx-2.5',
+    onClick: () => column.toggleSorting(column.getIsSorted() === 'asc'),
+  });
+}
+
 const columns: TableColumn<MapRow>[] = [
-  { accessorKey: 'map', header: 'Map' },
-  { accessorKey: 'date', header: 'Date' },
-  { accessorKey: 'city', header: 'City' },
-  { accessorKey: 'crawl', header: 'Crawl' },
-  { accessorKey: 'theme', header: 'Theme' },
-  { id: 'actions' },
+  {
+    accessorKey: 'map',
+    header: ({ column }) => getSortableHeader(column, 'Map'),
+  },
+  {
+    accessorKey: 'date',
+    header: ({ column }) => getSortableHeader(column, 'Date'),
+  },
+  {
+    accessorKey: 'city',
+    header: ({ column }) => getSortableHeader(column, 'City'),
+  },
+  {
+    accessorKey: 'crawl',
+    header: ({ column }) => getSortableHeader(column, 'Crawl'),
+  },
+  {
+    accessorKey: 'theme',
+    header: ({ column }) => getSortableHeader(column, 'Theme'),
+  },
+  { id: 'actions', enableSorting: false },
 ];
+
+const sorting = ref<Array<{ id: string; desc: boolean }>>([]);
+const globalFilter = ref('');
 
 const tableData = computed<MapRow[]>(() =>
   (maps.value ?? []).map((map) => ({
@@ -113,37 +152,53 @@ function getDropdownActions(map: MapRow): DropdownMenuItem[][] {
 </script>
 
 <template>
-  <UTable
-    :data="tableData"
-    :columns="columns"
-    class="flex-1"
-  >
-    <template #map-cell="{ row }">
-      <div class="flex items-center gap-3">
-        <UAvatar
-          :src="row.original.avatar ?? undefined"
-          size="md"
-          :alt="row.original.map"
-        />
-        <div>
-          <p class="font-medium text-highlighted">
-            {{ row.original.map }}
-          </p>
-          <p class="text-sm text-muted">
-            {{ row.original.timeSlot }}
-          </p>
+  <div class="flex flex-col flex-1 w-full">
+    <div class="flex px-4 py-3.5 border-b border-accented">
+      <UInput
+        v-model="globalFilter"
+        class="max-w-sm"
+        placeholder="Filter maps..."
+        icon="i-lucide-search"
+      />
+    </div>
+
+    <UTable
+      v-model:sorting="sorting"
+      v-model:global-filter="globalFilter"
+      :data="tableData"
+      :columns="columns"
+      class="flex-1"
+    >
+      <template #map-cell="{ row }">
+        <div class="flex items-center gap-3">
+          <UAvatar
+            :src="row.original.avatar ?? undefined"
+            size="md"
+            :alt="row.original.map"
+          />
+          <div>
+            <NuxtLink
+              :to="`/dashboard/maps/${row.original.id}`"
+              class="font-medium text-highlighted hover:text-primary transition-colors cursor-pointer"
+            >
+              {{ row.original.map }}
+            </NuxtLink>
+            <p class="text-sm text-muted">
+              {{ row.original.timeSlot }}
+            </p>
+          </div>
         </div>
-      </div>
-    </template>
-    <template #actions-cell="{ row }">
-      <UDropdownMenu :items="getDropdownActions(row.original)">
-        <UButton
-          icon="i-lucide-ellipsis-vertical"
-          color="neutral"
-          variant="ghost"
-          aria-label="Actions"
-        />
-      </UDropdownMenu>
-    </template>
-  </UTable>
+      </template>
+      <template #actions-cell="{ row }">
+        <UDropdownMenu :items="getDropdownActions(row.original)">
+          <UButton
+            icon="i-lucide-ellipsis-vertical"
+            color="neutral"
+            variant="ghost"
+            aria-label="Actions"
+          />
+        </UDropdownMenu>
+      </template>
+    </UTable>
+  </div>
 </template>

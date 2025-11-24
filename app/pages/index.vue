@@ -3,6 +3,11 @@ definePageMeta({
   colorMode: 'dark',
 });
 
+useSeoMeta({
+  title: 'Best Bar Crawls & Pub Crawl Tickets | Bar Crawl Live!',
+  description:
+    'Your home for the best bar crawls, pub crawls, and nightlife events. Explore top themes and find bar crawl tickets near you with Bar Crawl LIVE',
+});
 const supabase = useSupabaseClient();
 
 const { data: themes } = await supabase
@@ -165,6 +170,7 @@ const upcomingFeatures = ref([
         </ULink>
       </UPageGrid>
     </UPageSection>
+    <BlogArticles />
     <NewsletterCta />
   </UContainer>
 </template>

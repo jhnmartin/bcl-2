@@ -10,6 +10,7 @@ function onSubmit() {
   <UPageCTA
     title="Get first dibs on ticket giveaways, discounts, and new events"
     description="Sign up for news and all our best deals for upcoming bar and pub crawls, block parties and special events."
+    class="my-24"
   >
     <UForm
       @submit.prevent="onSubmit"
