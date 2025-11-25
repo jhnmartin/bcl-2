@@ -873,11 +873,6 @@ function resetVenueFormState() {
   Object.assign(venueFormState, { ...defaultVenueFormState });
 }
 
-function handleVenueModalToggle(value: boolean) {
-  isAddVenueModalOpen.value = value;
-  if (!value) resetVenueFormState();
-}
-
 // Populate form when map data loads
 watch(
   () => map.value,
@@ -1688,9 +1683,175 @@ async function onCreateVenue(event: FormSubmitEvent<VenueSchema>) {
 
           <!-- Right Column: Dropzone for Non-Participating Venues -->
           <div>
-            <h3 class="text-sm font-semibold text-highlighted mb-4">
-              Non-Participating Venues
-            </h3>
+            <div class="flex items-center justify-between mb-4">
+              <h3 class="text-sm font-semibold text-highlighted">
+                Non-Participating Venues
+              </h3>
+
+              <UModal
+                title="Add New Venue"
+                close-icon="i-lucide-x"
+                :model-value="isAddVenueModalOpen"
+                @update:model-value="
+                  (value: boolean) => {
+                    isAddVenueModalOpen = value;
+                    if (!value) resetVenueFormState();
+                  }
+                "
+                @close="resetVenueFormState"
+                :ui="{ body: 'p-6 sm:p-8', header: 'px-6 pt-6' }"
+              >
+                <UButton
+                  icon="i-lucide-plus"
+                  label="Add Venue"
+                  color="primary"
+                  size="xs"
+                  @click="isAddVenueModalOpen = true"
+                />
+
+                <template #body>
+                  <UForm
+                    id="create-venue-form"
+                    :schema="venueSchema"
+                    :state="venueFormState"
+                    @submit="onCreateVenue"
+                  >
+                    <div class="space-y-4">
+                      <UFormField
+                        name="name"
+                        label="Name"
+                        description="The name of the venue."
+                        required
+                        class="flex max-sm:flex-col justify-between items-start gap-4"
+                      >
+                        <UInput
+                          v-model="venueFormState.name"
+                          autocomplete="off"
+                          placeholder="Enter venue name"
+                          class="min-w-[280px]"
+                        />
+                      </UFormField>
+
+                      <USeparator />
+
+                      <UFormField
+                        name="slug"
+                        label="Slug"
+                        description="URL-friendly identifier."
+                        required
+                        class="flex max-sm:flex-col justify-between items-start gap-4"
+                      >
+                        <UInput
+                          v-model="venueFormState.slug"
+                          autocomplete="off"
+                          placeholder="venue-slug"
+                          class="min-w-[280px]"
+                        />
+                      </UFormField>
+
+                      <USeparator />
+
+                      <UFormField
+                        name="city"
+                        label="City"
+                        description="Associate the venue with a city."
+                        class="flex max-sm:flex-col justify-between items-start gap-4"
+                      >
+                        <USelectMenu
+                          v-model="venueFormState.city"
+                          :items="cityOptions"
+                          value-key="value"
+                          placeholder="Select a city"
+                          searchable
+                          clearable
+                          class="min-w-[280px]"
+                        />
+                      </UFormField>
+
+                      <USeparator />
+
+                      <UFormField
+                        name="address_line_1"
+                        label="Address"
+                        description="Street address (optional)."
+                        class="flex max-sm:flex-col justify-between items-start gap-4"
+                      >
+                        <UInput
+                          v-model="venueFormState.address_line_1"
+                          autocomplete="off"
+                          placeholder="123 Main St."
+                          class="min-w-[280px]"
+                        />
+                      </UFormField>
+
+                      <USeparator />
+
+                      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <UFormField
+                          name="state"
+                          label="State"
+                        >
+                          <UInput
+                            v-model="venueFormState.state"
+                            autocomplete="off"
+                            placeholder="State"
+                          />
+                        </UFormField>
+                        <UFormField
+                          name="zip_code"
+                          label="Zip Code"
+                        >
+                          <UInput
+                            v-model="venueFormState.zip_code"
+                            autocomplete="off"
+                            placeholder="Zip code"
+                          />
+                        </UFormField>
+                      </div>
+
+                      <USeparator />
+
+                      <UFormField
+                        name="maps_embed"
+                        label="Maps Embed"
+                        description="Google Maps embed URL or snippet (optional)."
+                        class="flex max-sm:flex-col justify-between items-start gap-4"
+                      >
+                        <UTextarea
+                          v-model="venueFormState.maps_embed"
+                          :rows="3"
+                          autoresize
+                          placeholder="https://maps.google.com/..."
+                          class="min-w-[280px]"
+                        />
+                      </UFormField>
+
+                      <div class="flex justify-end gap-3 pt-2">
+                        <UButton
+                          label="Cancel"
+                          color="neutral"
+                          variant="ghost"
+                          @click="
+                            () => {
+                              isAddVenueModalOpen = false;
+                              resetVenueFormState();
+                            }
+                          "
+                        />
+                        <UButton
+                          form="create-venue-form"
+                          label="Create Venue"
+                          type="submit"
+                          color="primary"
+                          :loading="isSavingVenue"
+                          :disabled="isSavingVenue"
+                        />
+                      </div>
+                    </div>
+                  </UForm>
+                </template>
+              </UModal>
+            </div>
             <div
               @dragover="onDragOverRight"
               @dragleave="onDragLeaveRight"
@@ -1737,236 +1898,8 @@ async function onCreateVenue(event: FormSubmitEvent<VenueSchema>) {
               </div>
             </div>
           </div>
-          <div class="flex justify-end mt-4">
-            <UButton
-              icon="i-lucide-plus"
-              label="Add Venue"
-              color="primary"
-              @click="isAddVenueModalOpen = true"
-            />
-          </div>
         </div>
       </UPageCard>
-
-      <UModal
-        :model-value="isAddVenueModalOpen"
-        @update:model-value="handleVenueModalToggle"
-      >
-        <UCard :ui="{ body: 'p-6 sm:p-8', header: 'px-6 pt-6' }">
-          <template #header>
-            <div class="flex items-center justify-between">
-              <div>
-                <h3 class="text-lg font-semibold text-highlighted">
-                  Add New Venue
-                </h3>
-                <p class="text-sm text-muted">
-                  Fill out the form to quickly add a venue to the city list.
-                </p>
-              </div>
-              <UButton
-                icon="i-lucide-x"
-                color="neutral"
-                variant="ghost"
-                @click="() => handleVenueModalToggle(false)"
-              />
-            </div>
-          </template>
-
-          <UForm
-            id="create-venue-form"
-            :schema="venueSchema"
-            :state="venueFormState"
-            @submit="onCreateVenue"
-            class="space-y-6"
-          >
-            <UFormField
-              name="name"
-              label="Name"
-              description="Venue name."
-              required
-            >
-              <UInput
-                v-model="venueFormState.name"
-                placeholder="Venue name"
-                autocomplete="off"
-              />
-            </UFormField>
-
-            <UFormField
-              name="slug"
-              label="Slug"
-              description="Unique identifier for the venue."
-              required
-            >
-              <UInput
-                v-model="venueFormState.slug"
-                placeholder="venue-slug"
-                autocomplete="off"
-              />
-            </UFormField>
-
-            <UFormField
-              name="city"
-              label="City"
-              description="Associate the venue with a city."
-            >
-              <USelectMenu
-                v-model="venueFormState.city"
-                :items="cityOptions"
-                value-key="value"
-                placeholder="Select a city"
-                searchable
-                clearable
-              />
-            </UFormField>
-
-            <UFormField
-              name="address_line_1"
-              label="Address"
-              description="Street address (optional)."
-            >
-              <UInput
-                v-model="venueFormState.address_line_1"
-                placeholder="123 Main St."
-                autocomplete="off"
-              />
-            </UFormField>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <UFormField
-                name="state"
-                label="State"
-              >
-                <UInput
-                  v-model="venueFormState.state"
-                  placeholder="State"
-                  autocomplete="off"
-                />
-              </UFormField>
-              <UFormField
-                name="zip_code"
-                label="Zip Code"
-              >
-                <UInput
-                  v-model="venueFormState.zip_code"
-                  placeholder="Zip code"
-                  autocomplete="off"
-                />
-              </UFormField>
-            </div>
-
-            <UFormField
-              name="maps_embed"
-              label="Maps Embed"
-              description="Google Maps embed URL or snippet (optional)."
-            >
-              <UTextarea
-                v-model="venueFormState.maps_embed"
-                :rows="3"
-                autoresize
-                placeholder="https://maps.google.com/..."
-              />
-            </UFormField>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <UFormField
-                name="white_logo"
-                label="White Logo URL"
-              >
-                <UInput
-                  v-model="venueFormState.white_logo"
-                  placeholder="https://"
-                  autocomplete="off"
-                />
-              </UFormField>
-              <UFormField
-                name="white_logo_alt"
-                label="White Logo Alt Text"
-              >
-                <UInput
-                  v-model="venueFormState.white_logo_alt"
-                  placeholder="Description"
-                  autocomplete="off"
-                />
-              </UFormField>
-            </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <UFormField
-                name="black_logo"
-                label="Black Logo URL"
-              >
-                <UInput
-                  v-model="venueFormState.black_logo"
-                  placeholder="https://"
-                  autocomplete="off"
-                />
-              </UFormField>
-              <UFormField
-                name="black_logo_alt"
-                label="Black Logo Alt Text"
-              >
-                <UInput
-                  v-model="venueFormState.black_logo_alt"
-                  placeholder="Description"
-                  autocomplete="off"
-                />
-              </UFormField>
-            </div>
-
-            <UFormField
-              name="seo_title"
-              label="SEO Title"
-            >
-              <UInput
-                v-model="venueFormState.seo_title"
-                placeholder="SEO title (optional)"
-                autocomplete="off"
-              />
-            </UFormField>
-
-            <UFormField
-              name="seo_description"
-              label="SEO Description"
-            >
-              <UTextarea
-                v-model="venueFormState.seo_description"
-                :rows="3"
-                autoresize
-                placeholder="SEO description (optional)"
-              />
-            </UFormField>
-
-            <UFormField
-              name="is_featured"
-              label="Featured Venue"
-              description="Mark this venue as featured."
-            >
-              <UCheckbox
-                v-model="venueFormState.is_featured"
-                label="Featured"
-              />
-            </UFormField>
-
-            <div class="flex justify-end gap-3 pt-2">
-              <UButton
-                label="Cancel"
-                color="neutral"
-                variant="ghost"
-                @click="() => handleVenueModalToggle(false)"
-              />
-              <UButton
-                form="create-venue-form"
-                label="Create Venue"
-                type="submit"
-                color="primary"
-                :loading="isSavingVenue"
-                :disabled="isSavingVenue"
-              />
-            </div>
-          </UForm>
-        </UCard>
-      </UModal>
     </template>
   </div>
 </template>

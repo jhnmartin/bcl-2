@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { h, resolveComponent } from 'vue';
 import type { DropdownMenuItem, TableColumn } from '@nuxt/ui';
 import { useClipboard } from '@vueuse/core';
 
@@ -39,22 +40,61 @@ const dateFormatter = new Intl.DateTimeFormat('en-US', {
   year: 'numeric',
 });
 
+const UButton = resolveComponent('UButton');
+
 interface VenueRow {
   id: string;
   name: string;
   slug: string;
   city: string;
-  created: string;
+  createdAt: string | null;
   avatar: string | null;
 }
 
+function getSortableHeader(column: any, label: string) {
+  const isSorted = column.getIsSorted();
+
+  return h(UButton, {
+    color: 'neutral',
+    variant: 'ghost',
+    label,
+    icon: isSorted
+      ? isSorted === 'asc'
+        ? 'i-lucide-arrow-up-narrow-wide'
+        : 'i-lucide-arrow-down-wide-narrow'
+      : 'i-lucide-arrow-up-down',
+    class: '-mx-2.5',
+    onClick: () => column.toggleSorting(column.getIsSorted() === 'asc'),
+  });
+}
+
 const columns: TableColumn<VenueRow>[] = [
-  { accessorKey: 'name', header: 'Venue' },
-  { accessorKey: 'city', header: 'City' },
-  { accessorKey: 'slug', header: 'Slug' },
-  { accessorKey: 'created', header: 'Created' },
-  { id: 'actions' },
+  {
+    accessorKey: 'name',
+    header: ({ column }) => getSortableHeader(column, 'Venue'),
+  },
+  {
+    accessorKey: 'city',
+    header: ({ column }) => getSortableHeader(column, 'City'),
+  },
+  {
+    accessorKey: 'slug',
+    header: ({ column }) => getSortableHeader(column, 'Slug'),
+  },
+  {
+    accessorKey: 'createdAt',
+    header: ({ column }) => getSortableHeader(column, 'Created'),
+    cell: ({ row }) => {
+      const value = row.getValue('createdAt') as string | null;
+      return value ? dateFormatter.format(new Date(value)) : '—';
+    },
+  },
+  { id: 'actions', enableSorting: false },
 ];
+
+const sorting = ref<Array<{ id: string; desc: boolean }>>([
+  { id: 'name', desc: false },
+]);
 
 const tableData = computed<VenueRow[]>(() =>
   (venues.value ?? []).map((venue) => ({
@@ -62,12 +102,12 @@ const tableData = computed<VenueRow[]>(() =>
     name: venue.name ?? 'Untitled venue',
     slug: venue.slug ?? '—',
     city: venue.city?.name ?? '—',
-    created: venue.created_at
-      ? dateFormatter.format(new Date(venue.created_at))
-      : '—',
+    createdAt: venue.created_at ?? null,
     avatar: venue.white_logo ?? venue.black_logo ?? null,
   }))
 );
+
+const globalFilter = ref('');
 
 function getDropdownActions(venue: VenueRow): DropdownMenuItem[][] {
   return [
@@ -103,32 +143,44 @@ function getDropdownActions(venue: VenueRow): DropdownMenuItem[][] {
 </script>
 
 <template>
-  <UTable
-    :data="tableData"
-    :columns="columns"
-    class="flex-1"
-  >
-    <template #name-cell="{ row }">
-      <div class="flex items-center gap-3">
-        <UAvatar
-          :src="row.original.avatar ?? undefined"
-          size="md"
-          :alt="row.original.name"
-        />
-        <span class="font-medium text-highlighted">
-          {{ row.original.name }}
-        </span>
-      </div>
-    </template>
-    <template #actions-cell="{ row }">
-      <UDropdownMenu :items="getDropdownActions(row.original)">
-        <UButton
-          icon="i-lucide-ellipsis-vertical"
-          color="neutral"
-          variant="ghost"
-          aria-label="Actions"
-        />
-      </UDropdownMenu>
-    </template>
-  </UTable>
+  <div class="flex flex-col flex-1 w-full">
+    <div class="flex px-4 py-3.5 border-b border-accented">
+      <UInput
+        v-model="globalFilter"
+        class="max-w-sm"
+        placeholder="Search..."
+      />
+    </div>
+    <UTable
+      v-model:sorting="sorting"
+      :data="tableData"
+      :columns="columns"
+      :global-filter="globalFilter"
+      class="flex-1"
+      sticky
+    >
+      <template #name-cell="{ row }">
+        <div class="flex items-center gap-3">
+          <UAvatar
+            :src="row.original.avatar ?? undefined"
+            size="md"
+            :alt="row.original.name"
+          />
+          <span class="font-medium text-highlighted">
+            {{ row.original.name }}
+          </span>
+        </div>
+      </template>
+      <template #actions-cell="{ row }">
+        <UDropdownMenu :items="getDropdownActions(row.original)">
+          <UButton
+            icon="i-lucide-ellipsis-vertical"
+            color="neutral"
+            variant="ghost"
+            aria-label="Actions"
+          />
+        </UDropdownMenu>
+      </template>
+    </UTable>
+  </div>
 </template>

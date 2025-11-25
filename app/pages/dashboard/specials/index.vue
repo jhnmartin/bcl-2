@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { h, resolveComponent } from 'vue';
 import type { DropdownMenuItem, TableColumn } from '@nuxt/ui';
 import { useClipboard } from '@vueuse/core';
 
@@ -6,6 +7,8 @@ const supabase = useSupabaseClient();
 const router = useRouter();
 const toast = useToast();
 const { copy } = useClipboard();
+
+const UButton = resolveComponent('UButton');
 
 const { data: specials } = await useAsyncData(
   'dashboard-specials',
@@ -58,20 +61,67 @@ interface SpecialsRow {
   crawl: string;
   theme: string;
   timeslot: string;
-  order: string;
-  eventDate: string;
+  order: number | null;
+  eventDate: string | null;
   slug: string;
 }
 
+function getSortableHeader(column: any, label: string) {
+  const isSorted = column.getIsSorted();
+
+  return h(UButton, {
+    color: 'neutral',
+    variant: 'ghost',
+    label,
+    icon: isSorted
+      ? isSorted === 'asc'
+        ? 'i-lucide-arrow-up-narrow-wide'
+        : 'i-lucide-arrow-down-wide-narrow'
+      : 'i-lucide-arrow-up-down',
+    class: '-mx-2.5',
+    onClick: () => column.toggleSorting(column.getIsSorted() === 'asc'),
+  });
+}
+
 const columns: TableColumn<SpecialsRow>[] = [
-  { accessorKey: 'venue', header: 'Venue' },
-  { accessorKey: 'crawl', header: 'Crawl' },
-  { accessorKey: 'eventDate', header: 'Event Date' },
-  { accessorKey: 'theme', header: 'Theme' },
-  { accessorKey: 'timeslot', header: 'Timeslot' },
-  { accessorKey: 'order', header: 'Order' },
-  { id: 'actions' },
+  {
+    accessorKey: 'venue',
+    header: ({ column }) => getSortableHeader(column, 'Venue'),
+  },
+  {
+    accessorKey: 'crawl',
+    header: ({ column }) => getSortableHeader(column, 'Crawl'),
+  },
+  {
+    accessorKey: 'eventDate',
+    header: ({ column }) => getSortableHeader(column, 'Event Date'),
+    cell: ({ row }) => {
+      const value = row.getValue('eventDate') as string | null;
+      return value ? dateFormatter.format(new Date(value)) : '—';
+    },
+  },
+  {
+    accessorKey: 'theme',
+    header: ({ column }) => getSortableHeader(column, 'Theme'),
+  },
+  {
+    accessorKey: 'timeslot',
+    header: ({ column }) => getSortableHeader(column, 'Timeslot'),
+  },
+  {
+    accessorKey: 'order',
+    header: ({ column }) => getSortableHeader(column, 'Order'),
+    cell: ({ row }) => {
+      const value = row.getValue('order') as number | null;
+      return value ?? '—';
+    },
+  },
+  { id: 'actions', enableSorting: false },
 ];
+
+const sorting = ref<Array<{ id: string; desc: boolean }>>([
+  { id: 'eventDate', desc: true },
+]);
 
 const tableData = computed<SpecialsRow[]>(() =>
   (specials.value ?? []).map((special) => ({
@@ -80,13 +130,8 @@ const tableData = computed<SpecialsRow[]>(() =>
     crawl: special.crawl?.name ?? '—',
     theme: special.theme?.display_name ?? '—',
     timeslot: special.timeslot ?? '—',
-    order:
-      typeof special.order === 'number'
-        ? String(special.order)
-        : special.order ?? '—',
-    eventDate: special.crawl?.event_date_start
-      ? dateFormatter.format(new Date(special.crawl.event_date_start))
-      : '—',
+    order: typeof special.order === 'number' ? special.order : null,
+    eventDate: special.crawl?.event_date_start ?? null,
     slug: special.slug ?? '',
   }))
 );
@@ -132,14 +177,16 @@ const globalFilter = ref('');
       <UInput
         v-model="globalFilter"
         class="max-w-sm"
-        placeholder="Filter..."
+        placeholder="Search..."
       />
     </div>
     <UTable
+      v-model:sorting="sorting"
       :data="tableData"
       :columns="columns"
       :global-filter="globalFilter"
       class="flex-1"
+      sticky
     >
       <template #actions-cell="{ row }">
         <UDropdownMenu :items="getDropdownActions(row.original)">

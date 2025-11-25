@@ -10,6 +10,12 @@ export default defineNuxtConfig({
 
   devtools: { enabled: true },
   compatibilityDate: '2025-07-15',
+  runtimeConfig: {
+    eventbrite: {
+      webhookSecret: process.env.EVENTBRITE_WEBHOOK_SECRET,
+      apiToken: process.env.EVENTBRITE_API_TOKEN,
+    },
+  },
 
   supabase: {
     redirectOptions: {
