@@ -1,7 +1,12 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { serverSupabaseClient } from '#supabase/server';
 import { useRuntimeConfig } from '#imports';
-import { createError, defineEventHandler, getHeader, readRawBody } from 'h3';
+import {
+  createError,
+  defineEventHandler,
+  getHeader,
+  readRawBody,
+} from 'h3';
 import { z } from 'zod';
 import type { Database, TablesInsert } from '~/types/database.types';
 
@@ -101,7 +106,7 @@ export default defineEventHandler(async (event) => {
   validateSignature(
     payloadString,
     getHeader(event, 'x-eventbrite-signature'),
-    runtimeConfig.eventbrite?.webhookSecret
+    runtimeConfig.eventbrite?.webhookSecret,
   );
 
   let parsedPayload: z.infer<typeof eventbritePayloadSchema>;
@@ -128,7 +133,7 @@ export default defineEventHandler(async (event) => {
   const supabase = await serverSupabaseClient<Database>(event);
   const orderDetails = await fetchEventbriteOrder(
     parsedPayload.api_url,
-    runtimeConfig.eventbrite?.apiToken
+    runtimeConfig.eventbrite?.apiToken,
   );
 
   const record = buildOrderRecord(parsedPayload, orderDetails);
@@ -150,7 +155,7 @@ export default defineEventHandler(async (event) => {
 function validateSignature(
   rawBody: string,
   signatureHeader: string | undefined,
-  secret?: string
+  secret?: string,
 ) {
   if (!secret) {
     // Signature validation disabled until secret is configured.
@@ -192,7 +197,7 @@ function validateSignature(
 
 async function fetchEventbriteOrder(
   apiUrl?: string,
-  token?: string
+  token?: string,
 ): Promise<EventbriteOrder | null> {
   if (!apiUrl || !token) {
     if (!token) {
@@ -215,11 +220,13 @@ async function fetchEventbriteOrder(
 
 function buildOrderRecord(
   payload: z.infer<typeof eventbritePayloadSchema>,
-  orderDetails: EventbriteOrder | null
+  orderDetails: EventbriteOrder | null,
 ): OrderInsert {
   const costs = orderDetails?.costs ?? undefined;
   const createdAt =
-    orderDetails?.created ?? orderDetails?.changed ?? new Date().toISOString();
+    orderDetails?.created ??
+    orderDetails?.changed ??
+    new Date().toISOString();
 
   return {
     created_at: createdAt,
@@ -266,3 +273,4 @@ function formatMoney(value?: EventbriteMoney | null) {
   }
   return amount.toFixed(2);
 }
+
