@@ -15,6 +15,15 @@ useSeoMeta({
 const supabase = useSupabaseClient();
 const toast = useToast();
 
+// Allowed email addresses for signup
+// Add emails to this array to allow signups
+const allowedEmails: string[] = [
+  // Add allowed email addresses here
+  'john@smithandgrain.com',
+  'liz.mcilwee@gmail.com',
+  'i.khadair87@gmail.com',
+];
+
 const fields = [
   {
     name: 'name',
@@ -38,7 +47,13 @@ const fields = [
 
 const schema = z.object({
   name: z.string().min(1, 'Name is required'),
-  email: z.string().email('Invalid email'),
+  email: z
+    .string()
+    .email('Invalid email')
+    .refine(
+      (email) => allowedEmails.includes(email.toLowerCase()),
+      'This email is not authorized to sign up'
+    ),
   password: z.string().min(8, 'Must be at least 8 characters'),
 });
 
