@@ -93,6 +93,30 @@ const links = [
         open.value = false;
       },
     },
+    {
+      label: 'Blog',
+      to: '/dashboard/blog',
+      icon: 'i-lucide-book',
+      defaultOpen: true,
+      type: 'trigger',
+      children: [
+        {
+          label: 'All Blogs',
+          to: '/dashboard/blog',
+          exact: true,
+          onSelect: () => {
+            open.value = false;
+          },
+        },
+        {
+          label: 'New Blog',
+          to: '/dashboard/blog/new',
+          onSelect: () => {
+            open.value = false;
+          },
+        },
+      ],
+    },
   ],
   [
     {

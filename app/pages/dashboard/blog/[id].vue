@@ -272,178 +272,188 @@ async function onSubmit(event: FormSubmitEvent<BlogSchema>) {
 </script>
 
 <template>
-  <div class="space-y-6">
-    <!-- Loading State -->
-    <div
-      v-if="loadingStatus === 'pending'"
-      class="flex items-center justify-center py-12"
-    >
-      <UIcon
-        name="i-lucide-loader-2"
-        class="size-6 animate-spin text-gray-400"
-      />
-    </div>
-
-    <!-- Error State -->
-    <UAlert
-      v-else-if="error || !blog"
-      color="error"
-      icon="i-lucide-triangle-alert"
-      title="Error loading blog post"
-      :description="error?.message || 'Blog post not found'"
-    />
-
-    <!-- Form Section -->
-    <template v-else>
-      <UForm
-        id="blog-edit"
-        :schema="blogSchema"
-        :state="formState"
-        @submit="onSubmit"
+  <UDashboardPanel id="blog-edit">
+    <template #header>
+      <UDashboardNavbar
+        title="Edit Blog Post"
+        :ui="{ right: 'gap-3' }"
       >
-        <UPageCard
-          title="Edit Blog Post"
-          :description="`Status: ${status}`"
-          variant="naked"
-          orientation="horizontal"
-          class="mb-4"
-        >
-          <UButton
-            form="blog-edit"
-            label="Save Changes"
-            color="primary"
-            type="submit"
-            class="w-fit lg:ms-auto"
-            :loading="isSaving"
-            :disabled="isSaving"
-          />
-        </UPageCard>
-
-        <UPageCard variant="subtle">
-          <UFormField
-            name="title"
-            label="Title"
-            description="The title of your blog post."
-            required
-            class="flex max-sm:flex-col justify-between items-start gap-4"
-          >
-            <UInput
-              v-model="formState.title"
-              autocomplete="off"
-              placeholder="Enter blog post title"
-              class="min-w-[350px]"
-            />
-          </UFormField>
-
-          <USeparator />
-
-          <UFormField
-            name="slug"
-            label="Slug"
-            description="URL-friendly identifier for the blog post (auto-generated from title, editable)."
-            required
-            class="flex max-sm:flex-col justify-between items-start gap-4"
-          >
-            <UInput
-              v-model="formState.slug"
-              autocomplete="off"
-              placeholder="blog-post-slug"
-              class="min-w-[350px]"
-              @input="isSlugManuallyEdited = true"
-            />
-          </UFormField>
-
-          <USeparator />
-
-          <UFormField
-            name="summary"
-            label="Summary"
-            description="Optional: A brief summary or excerpt of the blog post."
-            class="flex max-sm:flex-col justify-between items-start gap-4"
-          >
-            <UTextarea
-              v-model="formState.summary"
-              :rows="4"
-              autoresize
-              class="w-full min-w-[350px]"
-              placeholder="Enter blog post summary (optional)"
-            />
-          </UFormField>
-
-          <USeparator />
-
-          <UFormField
-            name="seo_title"
-            label="SEO Title"
-            description="Optional: Custom title for search engines. If not provided, the blog title will be used."
-            class="flex max-sm:flex-col justify-between items-start gap-4"
-          >
-            <UInput
-              v-model="formState.seo_title"
-              autocomplete="off"
-              placeholder="Enter SEO title (optional)"
-              class="min-w-[350px]"
-            />
-          </UFormField>
-
-          <USeparator />
-
-          <UFormField
-            name="seo_description"
-            label="SEO Description"
-            description="Optional: Meta description for search engines (recommended 150-160 characters)."
-            class="flex max-sm:flex-col justify-between items-start gap-4"
-          >
-            <UTextarea
-              v-model="formState.seo_description"
-              :rows="3"
-              autoresize
-              class="w-full min-w-[350px]"
-              placeholder="Enter SEO description (optional)"
-            />
-          </UFormField>
-
-          <USeparator />
-
-          <UFormField
-            name="published_at"
-            label="Publish Date"
-            description="Optional: Set a publish date to schedule or publish immediately. Leave empty to save as draft."
-            class="flex max-sm:flex-col justify-between items-start gap-4"
-          >
-            <UInput
-              v-model="formState.published_at"
-              type="datetime-local"
-              autocomplete="off"
-              placeholder="Select publish date (optional)"
-              class="min-w-[350px]"
-            />
-          </UFormField>
-        </UPageCard>
-      </UForm>
-
-      <!-- Blog Editor Section -->
-      <UPageCard
-        title="Blog Content"
-        description="Edit your blog post content using the editor below."
-        variant="subtle"
-      >
-        <DashboardBlogEditor
-          v-if="blogContent !== null"
-          :model-value="blogContent"
-          standalone
-          @update:model-value="onContentUpdate"
-        />
-        <div
-          v-else
-          class="flex items-center justify-center py-12"
-        >
-          <UIcon
-            name="i-lucide-loader-2"
-            class="size-6 animate-spin text-gray-400"
-          />
-        </div>
-      </UPageCard>
+        <template #leading>
+          <UDashboardSidebarCollapse />
+        </template>
+      </UDashboardNavbar>
     </template>
-  </div>
+    <template #body>
+      <!-- Loading State -->
+      <div
+        v-if="loadingStatus === 'pending'"
+        class="flex items-center justify-center py-12"
+      >
+        <UIcon
+          name="i-lucide-loader-2"
+          class="size-6 animate-spin text-gray-400"
+        />
+      </div>
+      <!-- Error State -->
+      <UAlert
+        v-else-if="error || !blog"
+        color="error"
+        icon="i-lucide-triangle-alert"
+        title="Error loading blog post"
+        :description="error?.message || 'Blog post not found'"
+      />
+      <!-- Form Section -->
+      <template v-else>
+        <UForm
+          id="blog-edit"
+          :schema="blogSchema"
+          :state="formState"
+          @submit="onSubmit"
+        >
+          <UPageCard
+            title="Edit Blog Post"
+            :description="`Status: ${status}`"
+            variant="naked"
+            orientation="horizontal"
+            class="mb-4"
+          >
+            <UButton
+              form="blog-edit"
+              label="Save Changes"
+              color="primary"
+              type="submit"
+              class="w-fit lg:ms-auto"
+              :loading="isSaving"
+              :disabled="isSaving"
+            />
+          </UPageCard>
+
+          <UPageCard variant="subtle">
+            <UFormField
+              name="title"
+              label="Title"
+              description="The title of your blog post."
+              required
+              class="flex max-sm:flex-col justify-between items-start gap-4"
+            >
+              <UInput
+                v-model="formState.title"
+                autocomplete="off"
+                placeholder="Enter blog post title"
+                class="min-w-[350px]"
+              />
+            </UFormField>
+
+            <USeparator />
+
+            <UFormField
+              name="slug"
+              label="Slug"
+              description="URL-friendly identifier for the blog post (auto-generated from title, editable)."
+              required
+              class="flex max-sm:flex-col justify-between items-start gap-4"
+            >
+              <UInput
+                v-model="formState.slug"
+                autocomplete="off"
+                placeholder="blog-post-slug"
+                class="min-w-[350px]"
+                @input="isSlugManuallyEdited = true"
+              />
+            </UFormField>
+
+            <USeparator />
+
+            <UFormField
+              name="summary"
+              label="Summary"
+              description="Optional: A brief summary or excerpt of the blog post."
+              class="flex max-sm:flex-col justify-between items-start gap-4"
+            >
+              <UTextarea
+                v-model="formState.summary"
+                :rows="4"
+                autoresize
+                class="w-full min-w-[350px]"
+                placeholder="Enter blog post summary (optional)"
+              />
+            </UFormField>
+
+            <USeparator />
+
+            <UFormField
+              name="seo_title"
+              label="SEO Title"
+              description="Optional: Custom title for search engines. If not provided, the blog title will be used."
+              class="flex max-sm:flex-col justify-between items-start gap-4"
+            >
+              <UInput
+                v-model="formState.seo_title"
+                autocomplete="off"
+                placeholder="Enter SEO title (optional)"
+                class="min-w-[350px]"
+              />
+            </UFormField>
+
+            <USeparator />
+
+            <UFormField
+              name="seo_description"
+              label="SEO Description"
+              description="Optional: Meta description for search engines (recommended 150-160 characters)."
+              class="flex max-sm:flex-col justify-between items-start gap-4"
+            >
+              <UTextarea
+                v-model="formState.seo_description"
+                :rows="3"
+                autoresize
+                class="w-full min-w-[350px]"
+                placeholder="Enter SEO description (optional)"
+              />
+            </UFormField>
+
+            <USeparator />
+
+            <UFormField
+              name="published_at"
+              label="Publish Date"
+              description="Optional: Set a publish date to schedule or publish immediately. Leave empty to save as draft."
+              class="flex max-sm:flex-col justify-between items-start gap-4"
+            >
+              <UInput
+                v-model="formState.published_at"
+                type="datetime-local"
+                autocomplete="off"
+                placeholder="Select publish date (optional)"
+                class="min-w-[350px]"
+              />
+            </UFormField>
+          </UPageCard>
+        </UForm>
+
+        <!-- Blog Editor Section -->
+        <UPageCard
+          title="Blog Content"
+          description="Edit your blog post content using the editor below."
+          variant="subtle"
+        >
+          <DashboardBlogEditor
+            v-if="blogContent !== null"
+            :model-value="blogContent"
+            standalone
+            @update:model-value="onContentUpdate"
+          />
+          <div
+            v-else
+            class="flex items-center justify-center py-12"
+          >
+            <UIcon
+              name="i-lucide-loader-2"
+              class="size-6 animate-spin text-gray-400"
+            />
+          </div>
+        </UPageCard>
+      </template>
+    </template>
+  </UDashboardPanel>
 </template>

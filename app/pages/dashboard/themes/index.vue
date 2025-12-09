@@ -113,9 +113,12 @@ function getDropdownActions(theme: ThemeRow): DropdownMenuItem[][] {
           size="md"
           :alt="row.original.name"
         />
-        <span class="font-medium text-highlighted">
+        <NuxtLink
+          :to="`/dashboard/themes/${row.original.id}`"
+          class="font-medium text-highlighted hover:text-primary transition-colors cursor-pointer"
+        >
           {{ row.original.name }}
-        </span>
+        </NuxtLink>
       </div>
     </template>
     <template #actions-cell="{ row }">

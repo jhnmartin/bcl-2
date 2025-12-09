@@ -30,6 +30,7 @@ const { data: specials } = await useAsyncData(
           black_logo
         ),
         theme:themes (
+          id,
           display_name,
           square_1_image_url
         )
@@ -60,6 +61,7 @@ interface SpecialsRow {
   venue: string;
   crawl: string;
   theme: string;
+  themeId: string | null;
   timeslot: string;
   order: number | null;
   eventDate: string | null;
@@ -129,6 +131,7 @@ const tableData = computed<SpecialsRow[]>(() =>
     venue: special.venueData?.name ?? 'Untitled venue',
     crawl: special.crawl?.name ?? '—',
     theme: special.theme?.display_name ?? '—',
+    themeId: special.theme?.id ?? null,
     timeslot: special.timeslot ?? '—',
     order: typeof special.order === 'number' ? special.order : null,
     eventDate: special.crawl?.event_date_start ?? null,
@@ -188,6 +191,24 @@ const globalFilter = ref('');
       class="flex-1"
       sticky
     >
+      <template #venue-cell="{ row }">
+        <NuxtLink
+          :to="`/dashboard/specials/${row.original.id}`"
+          class="font-medium text-highlighted hover:text-primary transition-colors cursor-pointer"
+        >
+          {{ row.original.venue }}
+        </NuxtLink>
+      </template>
+      <template #theme-cell="{ row }">
+        <NuxtLink
+          v-if="row.original.themeId"
+          :to="`/dashboard/themes/${row.original.themeId}`"
+          class="font-medium text-highlighted hover:text-primary transition-colors cursor-pointer"
+        >
+          {{ row.original.theme }}
+        </NuxtLink>
+        <span v-else>{{ row.original.theme }}</span>
+      </template>
       <template #actions-cell="{ row }">
         <UDropdownMenu :items="getDropdownActions(row.original)">
           <UButton

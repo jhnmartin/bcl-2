@@ -3,28 +3,17 @@ import { h, resolveComponent } from 'vue';
 import type { DropdownMenuItem, TableColumn } from '@nuxt/ui';
 import { useClipboard } from '@vueuse/core';
 
-const { isNotificationsSlideoverOpen } = useDashboard();
 const supabase = useSupabaseClient();
 const router = useRouter();
 const toast = useToast();
 const { copy } = useClipboard();
 
-const { data: venues } = await useAsyncData('dashboard-venues', async () => {
+const UButton = resolveComponent('UButton');
+
+const { data: cities } = await useAsyncData('dashboard-cities', async () => {
   const { data, error } = await supabase
-    .from('venues')
-    .select(
-      `
-        id,
-        name,
-        slug,
-        city:cities (
-          name
-        ),
-        created_at,
-        white_logo,
-        black_logo
-      `
-    )
+    .from('cities')
+    .select('id, name, slug, hero_image, created_at')
     .order('name', { ascending: true });
 
   if (error) {
@@ -40,14 +29,11 @@ const dateFormatter = new Intl.DateTimeFormat('en-US', {
   year: 'numeric',
 });
 
-const UButton = resolveComponent('UButton');
-
-interface VenueRow {
+interface CityRow {
   id: string;
   name: string;
   slug: string;
-  city: string;
-  createdAt: string | null;
+  created: string;
   avatar: string | null;
 }
 
@@ -68,13 +54,9 @@ function getSortableHeader(column: any, label: string) {
   });
 }
 
-const columns: TableColumn<VenueRow>[] = [
+const columns: TableColumn<CityRow>[] = [
   {
     accessorKey: 'name',
-    header: ({ column }) => getSortableHeader(column, 'Venue'),
-  },
-  {
-    accessorKey: 'city',
     header: ({ column }) => getSortableHeader(column, 'City'),
   },
   {
@@ -82,10 +64,10 @@ const columns: TableColumn<VenueRow>[] = [
     header: ({ column }) => getSortableHeader(column, 'Slug'),
   },
   {
-    accessorKey: 'createdAt',
+    accessorKey: 'created',
     header: ({ column }) => getSortableHeader(column, 'Created'),
     cell: ({ row }) => {
-      const value = row.getValue('createdAt') as string | null;
+      const value = row.getValue('created') as string | null;
       return value ? dateFormatter.format(new Date(value)) : '—';
     },
   },
@@ -96,29 +78,30 @@ const sorting = ref<Array<{ id: string; desc: boolean }>>([
   { id: 'name', desc: false },
 ]);
 
-const tableData = computed<VenueRow[]>(() =>
-  (venues.value ?? []).map((venue) => ({
-    id: venue.id,
-    name: venue.name ?? 'Untitled venue',
-    slug: venue.slug ?? '—',
-    city: venue.city?.name ?? '—',
-    createdAt: venue.created_at ?? null,
-    avatar: venue.white_logo ?? venue.black_logo ?? null,
+const tableData = computed<CityRow[]>(() =>
+  (cities.value ?? []).map((city) => ({
+    id: city.id,
+    name: city.name ?? 'Untitled city',
+    slug: city.slug ?? '—',
+    created: city.created_at
+      ? dateFormatter.format(new Date(city.created_at))
+      : '—',
+    avatar: city.hero_image,
   }))
 );
 
 const globalFilter = ref('');
 
-function getDropdownActions(venue: VenueRow): DropdownMenuItem[][] {
+function getDropdownActions(city: CityRow): DropdownMenuItem[][] {
   return [
     [
       {
-        label: 'Copy venue ID',
+        label: 'Copy city ID',
         icon: 'i-lucide-copy',
         onSelect: () => {
-          copy(venue.id);
+          copy(city.id);
           toast.add({
-            title: 'Venue ID copied to clipboard',
+            title: 'City ID copied to clipboard',
             color: 'success',
             icon: 'i-lucide-circle-check',
           });
@@ -129,7 +112,7 @@ function getDropdownActions(venue: VenueRow): DropdownMenuItem[][] {
       {
         label: 'Edit',
         icon: 'i-lucide-edit',
-        onSelect: () => router.push(`/dashboard/venues/${venue.id}`),
+        onSelect: () => router.push(`/dashboard/cities/${city.id}`),
       },
       {
         label: 'Delete',
@@ -167,8 +150,8 @@ function getDropdownActions(venue: VenueRow): DropdownMenuItem[][] {
             :alt="row.original.name"
           />
           <NuxtLink
-            :to="`/dashboard/venues/${row.original.id}`"
-            class="font-medium text-highlighted hover:underline cursor-pointer"
+            :to="`/dashboard/cities/${row.original.id}`"
+            class="font-medium text-highlighted hover:text-primary transition-colors cursor-pointer"
           >
             {{ row.original.name }}
           </NuxtLink>
