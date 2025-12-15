@@ -213,27 +213,50 @@ export default defineEventHandler(async (event) => {
         return { ok: true, skipped: 'Missing event ID' };
       }
 
-      // Check if crawl with this eventbrite_id already exists
-      const { data: existingCrawl } = await supabase
+      // Try upsert with unique constraint first (if constraint exists)
+      let { error } = await supabase
         .from('crawls')
-        .select('id')
-        .eq('eventbrite_id', crawlRecord.eventbrite_id)
-        .single();
+        .upsert(crawlRecord, { onConflict: 'eventbrite_id' });
 
-      let error;
-      if (existingCrawl) {
-        // Update existing crawl
-        const { error: updateError } = await supabase
+      // If upsert fails due to missing constraint, fall back to manual check
+      if (error && error.code === '42P10') {
+        console.log(
+          'Unique constraint not found, using manual check-then-insert/update'
+        );
+
+        // Check if crawl with this eventbrite_id already exists
+        const { data: existingCrawl } = await supabase
           .from('crawls')
-          .update(crawlRecord)
-          .eq('eventbrite_id', crawlRecord.eventbrite_id);
-        error = updateError;
-      } else {
-        // Insert new crawl
-        const { error: insertError } = await supabase
-          .from('crawls')
-          .insert(crawlRecord);
-        error = insertError;
+          .select('id')
+          .eq('eventbrite_id', crawlRecord.eventbrite_id)
+          .maybeSingle();
+
+        if (existingCrawl) {
+          // Update existing crawl
+          const { error: updateError } = await supabase
+            .from('crawls')
+            .update(crawlRecord)
+            .eq('eventbrite_id', crawlRecord.eventbrite_id);
+          error = updateError;
+        } else {
+          // Insert new crawl - handle potential race condition
+          const { error: insertError } = await supabase
+            .from('crawls')
+            .insert(crawlRecord);
+          error = insertError;
+
+          // If insert fails due to duplicate (race condition), try update instead
+          if (insertError && insertError.code === '23505') {
+            console.log(
+              'Race condition detected, updating existing crawl instead'
+            );
+            const { error: updateError } = await supabase
+              .from('crawls')
+              .update(crawlRecord)
+              .eq('eventbrite_id', crawlRecord.eventbrite_id);
+            error = updateError;
+          }
+        }
       }
 
       if (error) {
@@ -244,11 +267,7 @@ export default defineEventHandler(async (event) => {
         });
       }
 
-      console.log(
-        'Successfully upserted crawl:',
-        crawlRecord.eventbrite_id,
-        existingCrawl ? '(updated)' : '(created)'
-      );
+      console.log('Successfully upserted crawl:', crawlRecord.eventbrite_id);
     } else {
       console.warn('Failed to fetch event details from Eventbrite.');
     }
