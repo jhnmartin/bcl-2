@@ -1,12 +1,7 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { serverSupabaseClient } from '#supabase/server';
 import { useRuntimeConfig } from '#imports';
-import {
-  createError,
-  defineEventHandler,
-  getHeader,
-  readRawBody,
-} from 'h3';
+import { createError, defineEventHandler, getHeader, readRawBody } from 'h3';
 import { z } from 'zod';
 import type { Database, TablesInsert } from '~/types/database.types';
 
@@ -83,12 +78,6 @@ type EventbriteOrder = {
 
 type OrderInsert = TablesInsert<'orders'>;
 
-const supportedActions = new Set([
-  'order.placed',
-  'order.updated',
-  'order.refunded',
-]);
-
 export default defineEventHandler(async (event) => {
   const runtimeConfig = useRuntimeConfig();
   const rawBody = await readRawBody(event);
@@ -103,12 +92,6 @@ export default defineEventHandler(async (event) => {
   const payloadString =
     typeof rawBody === 'string' ? rawBody : rawBody.toString('utf8');
 
-  validateSignature(
-    payloadString,
-    getHeader(event, 'x-eventbrite-signature'),
-    runtimeConfig.eventbrite?.webhookSecret,
-  );
-
   let parsedPayload: z.infer<typeof eventbritePayloadSchema>;
   try {
     parsedPayload = eventbritePayloadSchema.parse(JSON.parse(payloadString));
@@ -120,42 +103,18 @@ export default defineEventHandler(async (event) => {
     });
   }
 
-  const action =
-    parsedPayload.config?.action ?? parsedPayload.action ?? 'unknown';
+  // Temporary: just log the raw payload and parsed payload for debugging
+  console.log('Eventbrite webhook raw body:', payloadString);
+  console.log('Eventbrite webhook parsed payload:', parsedPayload);
 
-  if (!supportedActions.has(action)) {
-    return {
-      ok: true,
-      skipped: `Unhandled action ${action}`,
-    };
-  }
-
-  const supabase = await serverSupabaseClient<Database>(event);
-  const orderDetails = await fetchEventbriteOrder(
-    parsedPayload.api_url,
-    runtimeConfig.eventbrite?.apiToken,
-  );
-
-  const record = buildOrderRecord(parsedPayload, orderDetails);
-  const { error } = await supabase
-    .from('orders')
-    .upsert(record, { onConflict: 'order_id' });
-
-  if (error) {
-    console.error('Failed to persist Eventbrite ticket sale', error);
-    throw createError({
-      statusCode: 500,
-      statusMessage: 'Unable to store ticket sale.',
-    });
-  }
-
+  // Return a simple OK so Eventbrite considers the webhook delivered
   return { ok: true };
 });
 
 function validateSignature(
   rawBody: string,
   signatureHeader: string | undefined,
-  secret?: string,
+  secret?: string
 ) {
   if (!secret) {
     // Signature validation disabled until secret is configured.
@@ -197,7 +156,7 @@ function validateSignature(
 
 async function fetchEventbriteOrder(
   apiUrl?: string,
-  token?: string,
+  token?: string
 ): Promise<EventbriteOrder | null> {
   if (!apiUrl || !token) {
     if (!token) {
@@ -220,13 +179,11 @@ async function fetchEventbriteOrder(
 
 function buildOrderRecord(
   payload: z.infer<typeof eventbritePayloadSchema>,
-  orderDetails: EventbriteOrder | null,
+  orderDetails: EventbriteOrder | null
 ): OrderInsert {
   const costs = orderDetails?.costs ?? undefined;
   const createdAt =
-    orderDetails?.created ??
-    orderDetails?.changed ??
-    new Date().toISOString();
+    orderDetails?.created ?? orderDetails?.changed ?? new Date().toISOString();
 
   return {
     created_at: createdAt,
@@ -273,4 +230,3 @@ function formatMoney(value?: EventbriteMoney | null) {
   }
   return amount.toFixed(2);
 }
-
