@@ -206,7 +206,26 @@ export default defineEventHandler(async (event) => {
 
       // Map eventDetails to crawls table and upsert
       const supabase = await serverSupabaseClient<Database>(event);
-      const crawlRecord = buildCrawlRecord(eventDetails);
+
+      // Generate slug first so we can use it for the image name
+      const eventName = eventDetails.name?.text ?? 'Untitled Event';
+      const startDate = eventDetails.start?.local;
+      const slug = generateSlug(eventName, startDate);
+
+      // Upload image to Supabase storage if available
+      let imageUrl: string | null = null;
+      const eventbriteImageUrl =
+        eventDetails.logo?.original?.url ?? eventDetails.logo?.url;
+
+      if (eventbriteImageUrl) {
+        imageUrl = await uploadImageToStorage(
+          supabase,
+          eventbriteImageUrl,
+          slug
+        );
+      }
+
+      const crawlRecord = buildCrawlRecord(eventDetails, slug, imageUrl);
 
       if (!crawlRecord.eventbrite_id) {
         console.warn('Eventbrite event missing ID, cannot upsert');
@@ -410,10 +429,66 @@ async function fetchEventbriteEvent(
   }
 }
 
-function buildCrawlRecord(eventDetails: EventbriteEvent): CrawlInsert {
+async function uploadImageToStorage(
+  supabase: Awaited<ReturnType<typeof serverSupabaseClient<Database>>>,
+  imageUrl: string,
+  slug: string
+): Promise<string | null> {
+  try {
+    // Fetch the image from Eventbrite
+    const response = await fetch(imageUrl);
+    if (!response.ok) {
+      console.error('Failed to fetch image from Eventbrite:', response.status);
+      return null;
+    }
+
+    const imageBuffer = await response.arrayBuffer();
+    const contentType = response.headers.get('content-type') ?? 'image/jpeg';
+
+    // Determine file extension from content type
+    let extension = 'jpg';
+    if (contentType.includes('png')) {
+      extension = 'png';
+    } else if (contentType.includes('webp')) {
+      extension = 'webp';
+    } else if (contentType.includes('gif')) {
+      extension = 'gif';
+    }
+
+    const fileName = `${slug}.${extension}`;
+
+    // Upload to Supabase storage bucket 'crawl-images'
+    const { error: uploadError } = await supabase.storage
+      .from('crawl-images')
+      .upload(fileName, imageBuffer, {
+        contentType,
+        upsert: true, // Overwrite if exists
+      });
+
+    if (uploadError) {
+      console.error('Failed to upload image to Supabase storage:', uploadError);
+      return null;
+    }
+
+    // Get public URL
+    const {
+      data: { publicUrl },
+    } = supabase.storage.from('crawl-images').getPublicUrl(fileName);
+
+    console.log('Successfully uploaded image to:', publicUrl);
+    return publicUrl;
+  } catch (error) {
+    console.error('Error uploading image to storage:', error);
+    return null;
+  }
+}
+
+function buildCrawlRecord(
+  eventDetails: EventbriteEvent,
+  slug: string,
+  imageUrl: string | null
+): CrawlInsert {
   const eventName = eventDetails.name?.text ?? 'Untitled Event';
-  const startDate = eventDetails.start?.local;
-  const slug = generateSlug(eventName, startDate);
 
   return {
     eventbrite_id: eventDetails.id ?? null,
@@ -423,8 +498,7 @@ function buildCrawlRecord(eventDetails: EventbriteEvent): CrawlInsert {
       eventDetails.description?.text ?? eventDetails.summary ?? null,
     event_date_start: eventDetails.start?.local ?? null,
     event_date_end: eventDetails.end?.local ?? null,
-    crawl_image_1:
-      eventDetails.logo?.url ?? eventDetails.logo?.original?.url ?? null,
+    crawl_image_1: imageUrl,
     Status: 'Draft',
     city: null,
     theme: null,
