@@ -77,6 +77,71 @@ type EventbriteOrder = {
 };
 
 type OrderInsert = TablesInsert<'orders'>;
+type CrawlInsert = TablesInsert<'crawls'>;
+
+type EventbriteEvent = {
+  id?: string;
+  name?: {
+    text?: string;
+    html?: string;
+  };
+  description?: {
+    text?: string;
+    html?: string;
+  };
+  start?: {
+    timezone?: string;
+    local?: string;
+    utc?: string;
+  };
+  end?: {
+    timezone?: string;
+    local?: string;
+    utc?: string;
+  };
+  url?: string;
+  currency?: string;
+  online_event?: boolean;
+  organization_id?: string;
+  organizer_id?: string;
+  venue_id?: string;
+  venue?: {
+    id?: string;
+    name?: string;
+    address?: {
+      address_1?: string;
+      address_2?: string;
+      city?: string;
+      region?: string;
+      postal_code?: string;
+      country?: string;
+    };
+  };
+  ticket_availability?: {
+    has_available_tickets?: boolean;
+    minimum_ticket_price?: EventbriteMoney | null;
+    maximum_ticket_price?: EventbriteMoney | null;
+    is_sold_out?: boolean;
+  };
+  status?: string;
+  created?: string;
+  changed?: string;
+  published?: string;
+};
+
+type EventbriteSeries = {
+  id?: string;
+  name?: {
+    text?: string;
+    html?: string;
+  };
+  events?: Array<{
+    id?: string;
+    name?: {
+      text?: string;
+    };
+  }>;
+};
 
 export default defineEventHandler(async (event) => {
   const runtimeConfig = useRuntimeConfig();
@@ -89,8 +154,7 @@ export default defineEventHandler(async (event) => {
     });
   }
 
-  const payloadString =
-    typeof rawBody === 'string' ? rawBody : rawBody.toString('utf8');
+  const payloadString = typeof rawBody === 'string' ? rawBody : String(rawBody);
 
   let parsedPayload: z.infer<typeof eventbritePayloadSchema>;
   try {
@@ -103,9 +167,40 @@ export default defineEventHandler(async (event) => {
     });
   }
 
-  // Temporary: just log the raw payload and parsed payload for debugging
-  console.log('Eventbrite webhook raw body:', payloadString);
+  const action =
+    parsedPayload.config?.action ?? parsedPayload.action ?? 'unknown';
+
+  console.log('Eventbrite webhook action:', action);
   console.log('Eventbrite webhook parsed payload:', parsedPayload);
+
+  // Handle event.published action
+  if (action === 'event.published') {
+    const apiUrl = parsedPayload.api_url;
+    const apiToken = runtimeConfig.eventbrite?.apiToken;
+
+    if (!apiToken) {
+      console.warn('Eventbrite API token is not configured.');
+      return { ok: true, skipped: 'API token not configured' };
+    }
+
+    if (!apiUrl) {
+      console.warn('No API URL provided in webhook payload.');
+      return { ok: true, skipped: 'No API URL' };
+    }
+
+    // Fetch event details from Eventbrite
+    const eventDetails = await fetchEventbriteEvent(apiUrl, apiToken);
+
+    if (eventDetails) {
+      console.log(
+        'Eventbrite event details:',
+        JSON.stringify(eventDetails, null, 2)
+      );
+      // TODO: Map eventDetails to crawls table and upsert
+    } else {
+      console.warn('Failed to fetch event details from Eventbrite.');
+    }
+  }
 
   // Return a simple OK so Eventbrite considers the webhook delivered
   return { ok: true };
@@ -173,6 +268,73 @@ async function fetchEventbriteOrder(
     });
   } catch (error) {
     console.error('Unable to fetch Eventbrite order details', error);
+    return null;
+  }
+}
+
+async function fetchEventbriteEvent(
+  apiUrl: string,
+  token: string
+): Promise<EventbriteEvent | null> {
+  try {
+    // Check if the URL is a series or an event
+    const isSeries = apiUrl.includes('/series/');
+
+    if (isSeries) {
+      // Fetch the series first
+      const series = await $fetch<EventbriteSeries>(apiUrl, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      console.log('Fetched series:', series);
+
+      // If series has events, fetch the most recent one
+      // Or you might want to fetch all events and handle them
+      if (series.events && series.events.length > 0) {
+        // Get the first event (you might want to get the published one specifically)
+        const eventId = series.events[0].id;
+        if (eventId) {
+          const eventUrl = `https://www.eventbriteapi.com/v3/events/${eventId}/`;
+          return await $fetch<EventbriteEvent>(eventUrl, {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          });
+        }
+      }
+
+      // If no events in series, try fetching events endpoint
+      const eventsUrl = `${apiUrl.replace(/\/$/, '')}/events/`;
+      const eventsResponse = await $fetch<{ events?: EventbriteEvent[] }>(
+        eventsUrl,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (eventsResponse.events && eventsResponse.events.length > 0) {
+        // Return the first event (you might want to filter by status or date)
+        return eventsResponse.events[0];
+      }
+
+      return null;
+    } else {
+      // It's an event URL, fetch it directly
+      return await $fetch<EventbriteEvent>(apiUrl, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+    }
+  } catch (error) {
+    console.error('Unable to fetch Eventbrite event details', error);
+    if (error instanceof Error) {
+      console.error('Error details:', error.message);
+    }
     return null;
   }
 }
