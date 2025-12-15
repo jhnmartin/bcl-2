@@ -208,9 +208,33 @@ export default defineEventHandler(async (event) => {
       const supabase = await serverSupabaseClient<Database>(event);
       const crawlRecord = buildCrawlRecord(eventDetails);
 
-      const { error } = await supabase
+      if (!crawlRecord.eventbrite_id) {
+        console.warn('Eventbrite event missing ID, cannot upsert');
+        return { ok: true, skipped: 'Missing event ID' };
+      }
+
+      // Check if crawl with this eventbrite_id already exists
+      const { data: existingCrawl } = await supabase
         .from('crawls')
-        .upsert(crawlRecord, { onConflict: 'eventbrite_id' });
+        .select('id')
+        .eq('eventbrite_id', crawlRecord.eventbrite_id)
+        .single();
+
+      let error;
+      if (existingCrawl) {
+        // Update existing crawl
+        const { error: updateError } = await supabase
+          .from('crawls')
+          .update(crawlRecord)
+          .eq('eventbrite_id', crawlRecord.eventbrite_id);
+        error = updateError;
+      } else {
+        // Insert new crawl
+        const { error: insertError } = await supabase
+          .from('crawls')
+          .insert(crawlRecord);
+        error = insertError;
+      }
 
       if (error) {
         console.error('Failed to upsert crawl from Eventbrite event', error);
@@ -220,7 +244,11 @@ export default defineEventHandler(async (event) => {
         });
       }
 
-      console.log('Successfully upserted crawl:', crawlRecord.eventbrite_id);
+      console.log(
+        'Successfully upserted crawl:',
+        crawlRecord.eventbrite_id,
+        existingCrawl ? '(updated)' : '(created)'
+      );
     } else {
       console.warn('Failed to fetch event details from Eventbrite.');
     }
