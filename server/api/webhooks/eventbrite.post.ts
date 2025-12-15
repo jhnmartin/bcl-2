@@ -89,6 +89,7 @@ type EventbriteEvent = {
     text?: string;
     html?: string;
   };
+  summary?: string;
   start?: {
     timezone?: string;
     local?: string;
@@ -127,6 +128,12 @@ type EventbriteEvent = {
   created?: string;
   changed?: string;
   published?: string;
+  logo?: {
+    url?: string;
+    original?: {
+      url?: string;
+    };
+  };
 };
 
 type EventbriteSeries = {
@@ -196,7 +203,24 @@ export default defineEventHandler(async (event) => {
         'Eventbrite event details:',
         JSON.stringify(eventDetails, null, 2)
       );
-      // TODO: Map eventDetails to crawls table and upsert
+
+      // Map eventDetails to crawls table and upsert
+      const supabase = await serverSupabaseClient<Database>(event);
+      const crawlRecord = buildCrawlRecord(eventDetails);
+
+      const { error } = await supabase
+        .from('crawls')
+        .upsert(crawlRecord, { onConflict: 'eventbrite_id' });
+
+      if (error) {
+        console.error('Failed to upsert crawl from Eventbrite event', error);
+        throw createError({
+          statusCode: 500,
+          statusMessage: 'Unable to store crawl.',
+        });
+      }
+
+      console.log('Successfully upserted crawl:', crawlRecord.eventbrite_id);
     } else {
       console.warn('Failed to fetch event details from Eventbrite.');
     }
@@ -337,6 +361,79 @@ async function fetchEventbriteEvent(
     }
     return null;
   }
+}
+
+function buildCrawlRecord(eventDetails: EventbriteEvent): CrawlInsert {
+  const eventName = eventDetails.name?.text ?? 'Untitled Event';
+  const startDate = eventDetails.start?.local;
+  const slug = generateSlug(eventName, startDate);
+
+  return {
+    eventbrite_id: eventDetails.id ?? null,
+    name: eventName,
+    slug: slug,
+    short_description:
+      eventDetails.description?.text ?? eventDetails.summary ?? null,
+    event_date_start: eventDetails.start?.local ?? null,
+    event_date_end: eventDetails.end?.local ?? null,
+    crawl_image_1:
+      eventDetails.logo?.url ?? eventDetails.logo?.original?.url ?? null,
+    Status: 'Draft',
+    city: null,
+    theme: null,
+    checkin_venue_1: null,
+    price: null,
+    seo_title: null,
+    seo_description: null,
+    alt_name: null,
+    collection: null,
+    neighborhood: null,
+    keywords_h2: null,
+    keywords_paragraph: null,
+    crawl_image_1_alt: null,
+    crawl_image_2: null,
+    crawl_image_2_alt: null,
+    crawl_image_3: null,
+    crawl_image_3_alt: null,
+    crawl_image_4: null,
+    crawl_image_4_alt: null,
+    crawl_image_vertical_url: null,
+    crawl_image_vertical_alt: null,
+    event_date_start_2: null,
+    event_date_end_2: null,
+    event_date_start_3: null,
+    event_date_end_3: null,
+    created_at: eventDetails.created ?? new Date().toISOString(),
+    updated_at: eventDetails.changed ?? new Date().toISOString(),
+  };
+}
+
+function generateSlug(eventName: string, startDate?: string | null): string {
+  // Convert event name to slug format (lowercase, replace spaces with hyphens, remove special chars)
+  const nameSlug = eventName
+    .toLowerCase()
+    .trim()
+    .replace(/[^\w\s-]/g, '') // Remove special characters
+    .replace(/\s+/g, '-') // Replace spaces with hyphens
+    .replace(/-+/g, '-') // Replace multiple hyphens with single hyphen
+    .replace(/^-|-$/g, ''); // Remove leading/trailing hyphens
+
+  // Format date as MM-DD-YY
+  let dateSlug = '';
+  if (startDate) {
+    try {
+      const date = new Date(startDate);
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const year = String(date.getFullYear()).slice(-2);
+      dateSlug = `${month}-${day}-${year}`;
+    } catch (error) {
+      console.warn('Failed to parse start date for slug:', startDate);
+    }
+  }
+
+  // Combine: event-name-MM-DD-YY
+  return dateSlug ? `${nameSlug}-${dateSlug}` : nameSlug;
 }
 
 function buildOrderRecord(
