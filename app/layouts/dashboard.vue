@@ -110,7 +110,7 @@ const links = [
         },
         {
           label: 'New Blog',
-          to: '/dashboard/blog/new',
+          to: '/dashboard/blog/create-blog',
           onSelect: () => {
             open.value = false;
           },
