@@ -18,9 +18,6 @@ export default defineNuxtConfig({
       webhookSecret: process.env.EVENTBRITE_WEBHOOK_SECRET,
       apiToken: process.env.EVENTBRITE_API_TOKEN,
     },
-    public: {
-      partykitHost: "",
-    },
   },
 
   supabase: {
@@ -34,12 +31,7 @@ export default defineNuxtConfig({
 
   vite: {
     optimizeDeps: {
-      include: [
-        "prosemirror-state",
-        "prosemirror-view",
-        "yjs",
-        "y-partykit/provider",
-      ],
+      include: ["prosemirror-state", "prosemirror-view"],
     },
   },
 });

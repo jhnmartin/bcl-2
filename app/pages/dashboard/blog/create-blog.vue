@@ -9,18 +9,6 @@ definePageMeta({
   layout: "dashboard",
 });
 
-const route = useRoute();
-const runtimeConfig = useRuntimeConfig();
-
-const room = computed(() => route.query.room as string | undefined);
-
-const user = useState("user", () => ({
-  name: getRandomName(),
-  color: getRandomColor(),
-}));
-
-const appConfig = useAppConfig();
-
 const editorRef = useTemplateRef("editorRef");
 
 const {
@@ -28,25 +16,6 @@ const {
   handlers: aiHandlers,
   isLoading: aiLoading,
 } = useEditorCompletion(editorRef);
-
-const {
-  enabled: collaborationEnabled,
-  ready: collaborationReady,
-  extensions: collaborationExtensions,
-  connectedUsers,
-} = useEditorCollaboration({
-  room: room.value,
-  host: runtimeConfig.public.partykitHost,
-  user: {
-    name: user.value.name,
-    color: COLORS[user.value.color]!,
-  },
-});
-
-// Set primary color for the app
-if (collaborationEnabled) {
-  appConfig.ui.colors.primary = user.value.color;
-}
 
 // Custom handlers for editor (merged with AI handlers)
 const customHandlers = {
@@ -62,14 +31,13 @@ const customHandlers = {
 } satisfies EditorCustomHandlers;
 
 const { items: emojiItems } = useEditorEmojis();
-const { items: mentionItems } = useEditorMentions(connectedUsers);
 const { items: suggestionItems } = useEditorSuggestions(customHandlers);
 const { getItems: getDragHandleItems, onNodeChange } =
   useEditorDragHandle(customHandlers);
 const { toolbarItems, bubbleToolbarItems, getImageToolbarItems } =
   useEditorToolbar(customHandlers, { aiLoading });
 
-// Default content - only used when Y.js document is empty
+// Default content
 const content = ref(`# New Blog Post
   
 Start writing your blog post here...
@@ -89,47 +57,25 @@ Type \`/\` anywhere to open the command menu and quickly insert:
 - Code blocks and horizontal rules
 - Images and more
 
-## Mentions & Emojis
+## Emojis
 
 Add emojis with \`:\` syntax :rocket:
 
 > *Pro tip: Use the bubble toolbar that appears when you select text for quick formatting.*
 `);
 
-// Set initial content for collaborative documents (only if empty)
-function onCreate({ editor }: { editor: Editor }) {
-  if (!collaborationEnabled) return;
-
-  const storageKey = `editor-initialized-${room.value}`;
-
-  // Skip if already initialized this session (handles HMR)
-  if (sessionStorage.getItem(storageKey)) return;
-
-  // Wait for Y.js to sync existing content from server before checking if empty
-  setTimeout(() => {
-    const text = editor.state.doc.textContent.trim();
-    if (!text) {
-      editor.commands.setContent(content.value, { contentType: "markdown" });
-    }
-    sessionStorage.setItem(storageKey, "true");
-  }, 500);
-}
-
 function onUpdate(value: string) {
-  if (!collaborationEnabled) {
-    content.value = value;
-  }
+  content.value = value;
 }
 
-const extensions = computed(() => [
+const extensions = [
   Emoji,
   ImageUpload,
   TextAlign.configure({
     types: ["heading", "paragraph"],
   }),
   completionExtension,
-  ...collaborationExtensions.value,
-]);
+];
 </script>
 
 <template>
@@ -153,13 +99,11 @@ const extensions = computed(() => [
 
     <template #body>
       <UEditor
-        v-if="collaborationReady"
         ref="editorRef"
         v-slot="{ editor, handlers }"
-        :model-value="collaborationEnabled ? undefined : content"
+        v-model="content"
         content-type="markdown"
         :extensions="extensions"
-        :starter-kit="collaborationEnabled ? { undoRedo: false } : undefined"
         :handlers="customHandlers"
         autofocus
         placeholder="Write, type '/' for commands..."
@@ -169,17 +113,11 @@ const extensions = computed(() => [
           content: 'max-w-4xl mx-auto',
         }"
         @update:model-value="onUpdate"
-        @create="onCreate"
       >
         <!-- Editor Toolbar -->
         <div
           class="sticky top-0 z-10 bg-default border-b border-default px-4 py-2 flex items-center gap-4"
         >
-          <EditorCollaborationUsers
-            v-if="collaborationEnabled"
-            :users="connectedUsers"
-          />
-
           <UEditorToolbar :editor="editor" :items="toolbarItems" />
         </div>
 
@@ -251,7 +189,6 @@ const extensions = computed(() => [
         </UEditorDragHandle>
 
         <UEditorEmojiMenu :editor="editor" :items="emojiItems" />
-        <UEditorMentionMenu :editor="editor" :items="mentionItems" />
         <UEditorSuggestionMenu :editor="editor" :items="suggestionItems" />
       </UEditor>
     </template>
